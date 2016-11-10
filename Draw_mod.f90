@@ -1,0 +1,617 @@
+Module Draw
+
+   use Image   
+   
+   implicit none
+   
+   type point
+      integer :: x, y
+   end type point
+   
+   interface draw_rectangle
+      module procedure draw_rectangleRGB
+      module procedure draw_rectangleRGB_A
+      module procedure draw_rectangleRGBA
+   end interface
+
+   interface draw_circle
+      module procedure draw_circleRGB
+      ! module procedure draw_circleRGB_A
+      module procedure draw_circleRGBA
+   end interface
+
+   interface flood_fill
+      module procedure flood_fillRGB
+      module procedure flood_fillRGBA
+   end interface
+
+Contains
+
+   subroutine draw_line(img, p1, p2, colour)
+   
+      implicit none
+      
+      type(RGBimage),      intent(INOUT) :: img
+      type(RGB), optional, intent(IN)    :: colour
+      type(point),         intent(IN)    :: p1, p2
+      type(RGB)                          :: c
+      type(point)                        :: p1t, p2t
+      integer                            :: x, y, dx, dy, error, ystep
+      logical                            :: steep
+      
+      if(.not.present(colour))then
+         c = RGB(0, 0, 0)
+      else
+         c = colour
+      end if
+
+      p1t = p1
+      p2t = p2
+      
+      steep = (abs(p2t%y - p1t%y) > abs(p2t%x -p1t%x))
+   
+      if(steep)then
+         call swap(p1t%x, p1t%y)
+         call swap(p2t%x, p2t%y)
+      end if
+      
+      if(p1t%x > p2t%x)then
+         call swap(p1t%x, p2t%x)
+         call swap(p1t%y, p2t%y)
+      end if
+      
+      dx = p2t%x - p1t%x
+      dy = abs(p2t%y - p1t%y)
+      error = dx/2
+      y = p1t%y
+      
+      if(p1t%y < p2t%y)then
+         ystep = 1
+      else
+         ystep = -1
+      end if
+      
+    do x = p1t%x, p2t%x
+       if (steep) then
+          call set_pixel(img, y, x, c)
+       else 
+          call set_pixel(img, x, y, c)
+       end if
+       error = error - dy
+       if ( error < 0 ) then
+          y = y + ystep
+          error = error + dx
+       end if
+    end do    
+   end subroutine draw_line
+
+
+   subroutine draw_rectangleRGB(img, p1, p2, colour, fill)
+   
+      implicit none
+      
+      type(RGBimage),    intent(INOUT) :: img
+      type(RGB),         intent(IN)    :: colour
+      type(point),       intent(INOUT) :: p1, p2
+      logical, optional, intent(IN)    :: fill
+      integer                          :: i, j
+      logical                          :: flag, xf, yf
+      
+      if(present(fill))then
+         if(fill)then
+            flag = .TRUE.
+         else
+            flag = .FALSE.
+         end if
+      else
+         flag = .FALSE.
+      end if
+      
+      if(p1%x > p2%x)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+         xf = .TRUE.
+      end if
+      
+      if(p1%y > p2%y.and..not.xf)then
+         call swap(p1%y, p2%y)
+         yf = .TRUE.
+      end if
+      
+      if(flag)then
+         do j = p1%y , p2%y
+            do i = p1%x , p2%x
+               call set_pixel(img, i, j, colour)
+            end do
+         end do
+      else
+         do i = p1%x , p2%x
+            call set_pixel(img, i, p1%y, colour)
+            call set_pixel(img, i, p2%y, colour)
+         end do
+         
+         do i = p1%y , p2%y
+            call set_pixel(img, p1%x, i, colour)
+            call set_pixel(img, p2%x, i, colour)
+         end do
+      end if
+      
+      if(xf)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+      elseif(yf.and..not.xf)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+      end if
+   end subroutine draw_rectangleRGB
+
+
+   subroutine draw_rectangleRGB_A(img, p1, p2, colour, fill)
+   
+      implicit none
+      
+      type(RGBAimage),    intent(INOUT) :: img
+      type(RGB),         intent(IN)     :: colour
+      type(point),       intent(INOUT)  :: p1, p2
+      logical, optional, intent(IN)     :: fill
+      type(RGBA)                        :: c_a
+      integer                           :: i, j
+      logical                           :: flag, xf, yf
+      
+      c_a = RGBA(colour%red, colour%green, colour%green, 255)
+
+      if(present(fill))then
+         if(fill)then
+            flag = .TRUE.
+         else
+            flag = .FALSE.
+         end if
+      else
+         flag = .FALSE.
+      end if
+      
+      if(p1%x > p2%x)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+         xf = .TRUE.
+      end if
+      
+      if(p1%y > p2%y.and..not.xf)then
+         call swap(p1%y, p2%y)
+         yf = .TRUE.
+      end if
+      
+      if(flag)then
+         do j = p1%y , p2%y
+            do i = p1%x , p2%x
+               call set_pixel(img, i, j, c_a)
+            end do
+         end do
+      else
+         do i = p1%x , p2%x
+            call set_pixel(img, i, p1%y, c_a)
+            call set_pixel(img, i, p2%y, c_a)
+         end do
+         
+         do i = p1%y , p2%y
+            call set_pixel(img, p1%x, i, c_a)
+            call set_pixel(img, p2%x, i, c_a)
+         end do
+      end if
+      
+      if(xf)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+      elseif(yf.and..not.xf)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+      end if
+   end subroutine draw_rectangleRGB_A
+
+
+   subroutine draw_rectangleRGBA(img, p1, p2, colour, fill, blend)
+   
+      implicit none
+      
+      type(RGBAimage),   intent(INOUT) :: img
+      type(RGBA),        intent(IN)    :: colour
+      type(point),       intent(INOUT) :: p1, p2
+      logical, optional, intent(IN)    :: fill, blend
+      type(RGBA)                       :: c1, c2
+      integer                          :: i, j
+      logical                          :: flag_f, flag_b, xf, yf
+      
+      if(present(blend))then
+         if(blend)then
+            flag_b = .TRUE.
+         else
+            flag_b = .FALSE.
+         end if
+      else
+         flag_b = .FALSE.
+      end if
+
+      if(present(fill))then
+         if(fill)then
+            flag_f = .TRUE.
+         else
+            flag_f = .FALSE.
+         end if
+      else
+         flag_f = .FALSE.
+      end if
+      
+      if(p1%x > p2%x)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+         xf = .TRUE.
+      end if
+      
+      if(p1%y > p2%y.and..not.xf)then
+         call swap(p1%y, p2%y)
+         yf = .TRUE.
+      end if
+      
+      if(flag_f.and.flag_b)then
+         do j = p1%y , p2%y
+            do i = p1%x , p2%x
+               call get_pixel(img, i, j, c1)
+               c2 = alpha_comp(colour, c1)
+               call set_pixel(img, i, j, c2)
+            end do
+         end do
+      elseif(flag_f.and..not.flag_b)then
+         do j = p1%y , p2%y
+            do i = p1%x , p2%x
+               call set_pixel(img, i, j, colour)
+            end do
+         end do
+      else
+         do i = p1%x , p2%x
+            call set_pixel(img, i, p1%y, colour)
+            call set_pixel(img, i, p2%y, colour)
+         end do
+         
+         do i = p1%y , p2%y
+            call set_pixel(img, p1%x, i, colour)
+            call set_pixel(img, p2%x, i, colour)
+         end do
+      end if
+      
+      if(xf)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+      elseif(yf.and..not.xf)then
+         call swap(p1%x, p2%x)
+         call swap(p1%y, p2%y)
+      end if
+   end subroutine draw_rectangleRGBA
+
+
+   subroutine draw_circleRGB(img, p, radius, colour, fill)
+
+      implicit none
+      
+      type(RGBimage),    intent(INOUT) :: img
+      type(RGB),         intent(IN)    :: colour
+      type(point),       intent(IN)    :: p
+      integer,           intent(IN)    :: radius
+      logical, optional, intent(IN)    :: fill
+      integer                          :: x, y, error
+      
+      x = radius
+      y = 0
+      error = 0
+      
+      do while( x >= y)
+    
+         call set_pixel(img, p%x + x, p%y + y , colour)
+         call set_pixel(img, p%x + y, p%y + x , colour)
+         call set_pixel(img, p%x - y, p%y + x , colour)
+         call set_pixel(img, p%x - x, p%y + y , colour)
+         call set_pixel(img, p%x - x, p%y - y , colour)
+         call set_pixel(img, p%x - y, p%y - x , colour)
+         call set_pixel(img, p%x + y, p%y - x , colour)
+         call set_pixel(img, p%x + x, p%y - y , colour)
+         
+         y = y + 1
+         error = error + 1 + 2*y
+         if(2*(error-x) + 1 > 0)then
+            x = x - 1
+            error = error + (1 - 2*x)
+         end if
+      end do
+      
+      if(present(fill))then
+         if(fill)then
+            call flood_fill(img, p%x, p%y, colour, RGB(img%Red(x, y), img%Green(x, y), img%Blue(x, y)))
+         end if
+      end if
+
+   end subroutine draw_circleRGB
+
+
+   subroutine draw_circleRGBA(img, p, radius, colour, fill, blend)
+
+      implicit none
+      
+      type(RGBAimage),   intent(INOUT) :: img
+      type(RGBA),        intent(IN)    :: colour
+      type(point),       intent(IN)     :: p
+      integer,           intent(IN)     :: radius
+      logical, optional, intent(IN)     :: fill, blend
+      type(RGBA)                        :: c1
+      integer                           :: x, y, error
+      
+      x = radius
+      y = 0
+      error = 0
+      c1 = colour
+      if(present(blend))then
+         if(blend)then
+            c1 = alpha_comp(colour, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+         end if
+      end if
+      print*,c1,colour
+      do while( x >= y)
+    
+         call set_pixel(img, p%x + x, p%y + y , c1)
+         call set_pixel(img, p%x + y, p%y + x , c1)
+         call set_pixel(img, p%x - y, p%y + x , c1)
+         call set_pixel(img, p%x - x, p%y + y , c1)
+         call set_pixel(img, p%x - x, p%y - y , c1)
+         call set_pixel(img, p%x - y, p%y - x , c1)
+         call set_pixel(img, p%x + y, p%y - x , c1)
+         call set_pixel(img, p%x + x, p%y - y , c1)
+         
+         y = y + 1
+         error = error + 1 + 2*y
+         if(2*(error-x) + 1 > 0)then
+            x = x - 1
+            error = error + (1 - 2*x)
+         end if
+      end do
+      
+      if(present(fill).and.present(blend))then
+         if(fill.and.blend)then
+            call flood_fill(img, p%x, p%y,c1, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+         else
+            call flood_fill(img, p%x, p%y,c1, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+         end if
+      elseif(present(fill))then
+         if(fill)then
+            call flood_fill(img, p%x, p%y,c1, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+         end if
+      end if
+
+   end subroutine draw_circleRGBA
+   
+   subroutine draw_polygon(img, colour, p1, p2, p3, fill)
+   
+      implicit none
+      
+      type(RGBimage),    intent(INOUT) :: img
+      type(RGB),         intent(IN)    :: colour
+      type(point),       intent(INOUT) :: p1, p2, p3
+      logical, optional, intent(IN)    :: fill
+      integer                          :: x, y
+      
+      call draw_line(img, p1, p2, colour)
+      call draw_line(img, p2, p3, colour)
+      call draw_line(img, p3, p1, colour)
+   
+      if(present(fill))then
+         if(fill)then
+            x = (p1%x + p2%x + p3%x)/3
+            y = (p1%y + p2%y + p3%y)/3
+            print*,x,y
+!            call set_pixel(img, x,y,RGB(255,255,255))
+            call flood_fill(img, x, y, colour, RGB(img%Red(x, y), img%Green(x, y), img%Blue(x, y)))
+         end if
+      end if
+   
+   end subroutine draw_polygon
+   
+   subroutine swap(a, b)
+   
+      implicit none
+      
+      integer, intent(INOUT) :: a, b
+      integer                :: tmp
+      
+      tmp = a
+      a = b
+      b = tmp
+      
+   end subroutine swap
+   
+   recursive subroutine flood_fillRGB(img, x, y, colour, old)
+   
+      implicit none
+      
+      type(RGBimage), intent(INOUT) :: img
+      type(RGB),      intent(IN)    :: colour, old
+      integer,        intent(IN)    :: x, y
+      integer                       :: x1
+
+      if(old == colour)return
+      if( (RGB(img%Red(x, y), img%Green(x, y), img%Blue(x, y)) /= old))return
+
+      x1 = x
+      do while(x1 < img%width .and. RGB(img%Red(x1, y), img%Green(x1, y), & 
+                                             img%Blue(x1, y)) == old)
+         call set_pixel(img, x1, y, colour)
+         x1 = x1 + 1
+      end do
+      
+      x1 = x - 1
+      if(x1/=0)then
+         do while(x1 >= 1 .and. RGB(img%Red(x1, y), img%Green(x1, y), & 
+                                                img%Blue(x1, y)) == old)
+            call set_pixel(img, x1, y, colour)
+
+            x1 = x1 - 1
+            if(x1==0)exit
+         end do
+      end if
+      
+!      move up
+      x1 = x
+      do while(x1 < img%width .and. RGB(img%Red(x1, y), img%Green(x1, y), & 
+                                             img%Blue(x1, y)) == colour)
+         if(y==1)exit
+         if(y > 1 .and. RGB(img%Red(x1, y-1), img%Green(x1, y-1), & 
+                                             img%Blue(x1, y-1))==old)then
+            call flood_fill(img, x, y-1, colour, old)
+         end if
+         x1 = x1 +1
+
+      end do
+
+      x1 = x - 1
+      if(x1/=0)then
+         do while(x1 >= 1 .and. RGB(img%Red(x1, y), img%Green(x1, y), & 
+                                                img%Blue(x1, y)) == colour)
+            if(x1==0 .or. y==1)exit
+            if(y > 1 .and. RGB(img%Red(x1, y-1), img%Green(x1, y-1), & 
+                                                img%Blue(x1, y-1))==old)then
+               call flood_fill(img, x, y-1, colour, old)
+            end if
+            x1 = x1 - 1
+            if(x1==0 .or. y==0)exit
+         end do
+      end if
+      !move down
+      
+      x1 = x
+      do while(x1 < img%width .and. RGB(img%Red(x1, y), img%Green(x1, y), & 
+                                             img%Blue(x1, y)) == colour)
+         if(y==img%height)exit
+         if(y < img%height-1 .and. RGB(img%Red(x1, y+1), img%Green(x1, y+1), & 
+                                             img%Blue(x1, y+1))==old)then
+            call flood_fill(img, x, y+1, colour, old)
+         end if
+         x1 = x1 +1
+      end do
+      
+      x1 = x-1
+      if(x1/=0)then
+         do while(x1 >= 1 .and. RGB(img%Red(x1, y), img%Green(x1, y), & 
+                                                img%Blue(x1, y)) == colour)
+            if(y==img%height)exit
+            if(y < img%height .and. RGB(img%Red(x1, y+1), img%Green(x1, y+1), & 
+                                                img%Blue(x1, y+1))==old)then
+               call flood_fill(img, x, y+1, colour, old)
+            end if
+            x1 = x1 - 1
+            if(x1==0.or.y==0)exit
+         end do
+      end if
+   end subroutine flood_fillRGB
+
+
+   recursive subroutine flood_fillRGBA(img, x, y, colour, old)
+   
+      implicit none
+      
+      type(RGBAimage), intent(INOUT) :: img
+      type(RGBA),      intent(IN)    :: colour, old
+      integer,        intent(IN)     :: x, y
+      integer                        :: x1
+
+      if(old == colour)return
+      if( (RGBA(img%Red(x, y), img%Green(x, y), img%Blue(x, y), img%alpha(x, y)) /= old))return
+
+      x1 = x
+      do while(x1 < img%width .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
+                                         img%Blue(x1, y), img%alpha(x1, y)) == old)
+         call set_pixel(img, x1, y, colour)
+         x1 = x1 + 1
+      end do
+      
+      x1 = x - 1
+      if(x1/=0)then
+         do while(x1 >= 1 .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
+                                     img%Blue(x1, y), img%alpha(x1, y)) == old)
+            call set_pixel(img, x1, y, colour)
+
+            x1 = x1 - 1
+            if(x1==0)exit
+         end do
+      end if
+      
+!      move up
+      x1 = x
+      do while(x1 < img%width .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
+                                         img%Blue(x1, y), img%alpha(x1, y)) == colour)
+         if(y==1)exit
+         if(y > 1 .and. RGBA(img%Red(x1, y-1), img%Green(x1, y-1), & 
+                             img%Blue(x1, y-1), img%alpha(x1, y-1)) == old)then
+            call flood_fill(img, x, y-1, colour, old)
+         end if
+         x1 = x1 +1
+
+      end do
+
+      x1 = x - 1
+      if(x1/=0)then
+         do while(x1 >= 1 .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
+                                     img%Blue(x1, y), img%alpha(x1, y)) == colour)
+            if(x1==0 .or. y==1)exit
+            if(y > 1 .and. RGBA(img%Red(x1, y-1), img%Green(x1, y-1), & 
+                                img%Blue(x1, y-1), img%alpha(x1, y-1)) == old)then
+               call flood_fill(img, x, y-1, colour, old)
+            end if 
+            x1 = x1 - 1
+            if(x1==0 .or. y==0)exit
+         end do
+      end if
+      !move down
+      
+      x1 = x
+      do while(x1 < img%width .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
+                                         img%Blue(x1, y), img%alpha(x1, y)) == colour)
+         if(y==img%height)exit
+         if(y < img%height-1 .and. RGBA(img%Red(x1, y+1), img%Green(x1, y+1), & 
+                                        img%Blue(x1, y+1), img%alpha(x1, y+1)) == old)then
+            call flood_fill(img, x, y+1, colour, old)
+         end if
+         x1 = x1 +1
+      end do
+      
+      x1 = x-1
+      if(x1/=0)then
+         do while(x1 >= 1 .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
+                                     img%Blue(x1, y), img%alpha(x1, y)) == colour)
+            if(y==img%height)exit
+            if(y < img%height .and. RGBA(img%Red(x1, y+1), img%Green(x1, y+1), & 
+                                         img%Blue(x1, y+1), img%alpha(x1, y+1)) == old)then
+               call flood_fill(img, x, y+1, colour, old)
+            end if
+            x1 = x1 - 1
+            if(x1==0.or.y==0)exit
+         end do
+      end if
+
+   end subroutine flood_fillRGBA
+
+
+   function alpha_comp(ca, cb) result(co)
+
+        implicit none
+
+        type(RGBA), intent(IN) :: cb, ca
+        type(RGBA)             :: co
+        real                   :: a_tmp, b_tmp
+
+        a_tmp = ca%alpha/255.
+        b_tmp = cb%alpha/255.
+
+         co%red =  clampInt(int(ca%red * a_tmp) + int(cb%red * (1. - a_tmp)), 0, 255)
+         co%green =  clampInt(int(ca%green * a_tmp) + int(cb%green * (1. - a_tmp)), 0, 255)
+         co%blue =  clampInt(int(ca%blue * a_tmp) + int(cb%blue * (1. - a_tmp)), 0, 255)
+         co%alpha = clampInt(int((b_tmp + (1. - b_tmp) * a_tmp)*255.), 0, 255)
+
+   end function alpha_comp
+
+end module Draw

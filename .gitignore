@@ -1,3 +1,4 @@
+*.ppm
 *.mod
 prim.f90
 a.out

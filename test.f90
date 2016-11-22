@@ -12,21 +12,23 @@ program testimage
    
    !read in image
    call init_image(img)
-   call read_ppm('t.ppm', img)
-   call write_ppm('fds.ppm', img, 'P6')
+!   call read_ppm('mona.ppm', img)
+!   call write_ppm('fds.ppm', img, 'P6')
    
    !write uniform colour image out
   call init_image(img)
   call alloc_image(img, 200, 200)
-  call fill_img(img, RGBA(0,0,0,255))
+  call fill_img(img, RGBA(0,0,0,0))
   p1 = point(100,100)
   p2 = point(50, 50)
-  call draw_rectangle(img, p1, p2, RGB(255,0,0), .TRUE.)
+  call draw_rectangle(img, p1, p2, RGBA(255,0,0,0), .TRUE.)
 
   p2 =point(0,0)
   p1 = point(70,70)
-  call draw_rectangle(img, p1, p2, RGBA(0,255,0,150), .TRUE., .FALSE.)
-  call write_ppm('test.ppm', img, 'P6')
+  colour=RGBA(0,0,255,128)
+    call draw_circle(img, point(160, 50), 50, colour, .True., .TRUE.)
+  call draw_rectangle(img, p1, p2, RGBA(0,255,0,128), .TRUE., .TRUE.)
+  call save_image( img, 'test','.png')
 
 !   ! draw square using set_pixel
 !   do i = 50, 100

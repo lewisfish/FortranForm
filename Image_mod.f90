@@ -55,6 +55,16 @@ Module Image
       module procedure write_ppm_RGBA
    end interface
 
+   interface open_image
+      module procedure open_imageRGB
+      module procedure open_imageRGBA
+   end interface
+
+   interface save_image
+      module procedure save_imageRGB
+      module procedure save_imageRGBA
+   end interface
+
    interface operator (==)
       module procedure RGBequal
       module procedure RGBAequal
@@ -79,6 +89,7 @@ Module Image
 
    interface assignment (=)
       module procedure RGBimageequal
+      module procedure RGBAimageequal
    end interface
    
 Contains
@@ -270,7 +281,23 @@ Contains
       a1%green = a2%green
       a1%blue = a2%blue
 
-   end  subroutine RGBimageequal
+   end subroutine RGBimageequal
+   
+   
+   subroutine RGBAimageequal(a1, a2)
+
+      implicit none
+
+      type(RGBAimage), intent(OUT) :: a1
+      type(RGBAimage), intent(IN)  :: a2
+
+      a1%red = a2%red
+      a1%green = a2%green
+      a1%blue = a2%blue
+      a1%alpha = a2%alpha
+      
+   end subroutine RGBAimageequal
+
 
    logical function RGBequal(c1, c2)
    
@@ -574,7 +601,7 @@ Contains
    end subroutine write_ppm_RGBA
 
 
-   subroutine open_image(img, filename, format)
+   subroutine open_imageRGB(img, filename, format)
    
       implicit none
       
@@ -585,9 +612,39 @@ Contains
       call read_ppm(filename//'.ppm', img)
       call system('rm '//filename//'.ppm')
    
-   end subroutine
+   end subroutine open_imageRGB
 
-   subroutine save_image_RGBA(img, filename, format)
+   subroutine open_imageRGBA(img, filename, format)
+   
+      implicit none
+      
+      type(RGBAimage), intent(OUT) :: img
+      character(*),   intent(IN)  :: filename, format
+      
+      call system('convert '//filename//format//' '//filename//'.ppm')
+      call read_ppm(filename//'.ppm', img)
+      call system('rm '//filename//'.ppm')
+   
+   end subroutine open_imageRGBA
+
+
+   subroutine save_imageRGB(img, filename, format)
+   
+      implicit none
+      
+      type(RGBimage), intent(IN) :: img
+      character(*),   intent(IN) :: filename, format
+      
+      print*,filename//format
+      ! call exit(0)
+      call write_ppm(filename//'.ppm', img, 'P6')
+      call system('convert '//filename//'.ppm '//filename//format)
+      call system('rm '//filename//'.ppm')
+   
+   end subroutine save_imageRGB
+
+
+   subroutine save_imageRGBA(img, filename, format)
    
       implicit none
       
@@ -600,5 +657,5 @@ Contains
       call system('convert '//filename//'.ppm '//filename//format)
       call system('rm '//filename//'.ppm')
    
-   end subroutine save_image_RGBA
+   end subroutine save_imageRGBA
 end module image

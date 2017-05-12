@@ -7,7 +7,16 @@ Module Draw
    type point
       integer :: x, y
    end type point
+
+   type bucket
+      integer :: yMax, yMin, x, sign, dx, dy, summ
+   end type bucket
    
+   interface draw_line
+      module procedure draw_lineRGB
+      module procedure draw_lineRGBA
+   end interface draw_line
+
    interface draw_rectangle
       module procedure draw_rectangleRGB
       module procedure draw_rectangleRGB_A
@@ -27,7 +36,7 @@ Module Draw
 
 Contains
 
-   subroutine draw_line(img, p1, p2, colour)
+   subroutine draw_lineRGB(img, p1, p2, colour)
    
       implicit none
       
@@ -83,7 +92,65 @@ Contains
           error = error + dx
        end if
     end do    
-   end subroutine draw_line
+   end subroutine draw_lineRGB
+
+   subroutine draw_lineRGBA(img, p1, p2, colour)
+   
+      implicit none
+      
+      type(RGBAimage),      intent(INOUT) :: img
+      type(RGBA), optional, intent(IN)    :: colour
+      type(point),         intent(IN)    :: p1, p2
+      type(RGBA)                          :: c
+      type(point)                        :: p1t, p2t
+      integer                            :: x, y, dx, dy, error, ystep
+      logical                            :: steep
+      
+      if(.not.present(colour))then
+         c = RGBA(0, 0, 0, 0)
+      else
+         c = colour
+      end if
+
+      p1t = p1
+      p2t = p2
+      
+      steep = (abs(p2t%y - p1t%y) > abs(p2t%x -p1t%x))
+   
+      if(steep)then
+         call swap(p1t%x, p1t%y)
+         call swap(p2t%x, p2t%y)
+      end if
+      
+      if(p1t%x > p2t%x)then
+         call swap(p1t%x, p2t%x)
+         call swap(p1t%y, p2t%y)
+      end if
+      
+      dx = p2t%x - p1t%x
+      dy = abs(p2t%y - p1t%y)
+      error = dx/2
+      y = p1t%y
+      
+      if(p1t%y < p2t%y)then
+         ystep = 1
+      else
+         ystep = -1
+      end if
+      
+    do x = p1t%x, p2t%x
+       if (steep) then
+          call set_pixel(img, y, x, c)
+       else 
+          call set_pixel(img, x, y, c)
+       end if
+       error = error - dy
+       if ( error < 0 ) then
+          y = y + ystep
+          error = error + dx
+       end if
+    end do    
+   end subroutine draw_lineRGBA
 
 
    subroutine draw_rectangleRGB(img, p1, p2, colour, fill)
@@ -337,51 +404,149 @@ Contains
       
       type(RGBAimage),   intent(INOUT) :: img
       type(RGBA),        intent(IN)    :: colour
-      type(point),       intent(IN)     :: p
-      integer,           intent(IN)     :: radius
-      logical, optional, intent(IN)     :: fill, blend
-      type(RGBA)                        :: c1
-      integer                           :: x, y, error
+      type(point),       intent(IN)    :: p
+      integer,           intent(IN)    :: radius
+      logical, optional, intent(IN)    :: fill, blend
+      type(RGBA)                       :: c1, c2
+      integer                          :: x, y, error,i,j
       
       x = radius
       y = 0
       error = 0
       c1 = colour
-      if(present(blend))then
-         if(blend)then
-            c1 = alpha_comp(colour, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
-         end if
-      end if
-      print*,c1,colour
-      do while( x >= y)
-    
-         call set_pixel(img, p%x + x, p%y + y , c1)
-         call set_pixel(img, p%x + y, p%y + x , c1)
-         call set_pixel(img, p%x - y, p%y + x , c1)
-         call set_pixel(img, p%x - x, p%y + y , c1)
-         call set_pixel(img, p%x - x, p%y - y , c1)
-         call set_pixel(img, p%x - y, p%y - x , c1)
-         call set_pixel(img, p%x + y, p%y - x , c1)
-         call set_pixel(img, p%x + x, p%y - y , c1)
-         
-         y = y + 1
-         error = error + 1 + 2*y
-         if(2*(error-x) + 1 > 0)then
-            x = x - 1
-            error = error + (1 - 2*x)
-         end if
-      end do
-      
+
       if(present(fill).and.present(blend))then
          if(fill.and.blend)then
-            call flood_fill(img, p%x, p%y,c1, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+
+            do i = -radius, radius, 1
+               do j = -radius, radius, 1
+                  if(i*i + j*j <= radius*radius)then
+                     call get_pixelRGBA(img, p%x+i, p%y+j, c2)
+                     c1 = alpha_comp(colour, c2)
+                     call set_pixel(img, p%x+i, p%y+j, c1)
+                  end if
+               end do
+            end do
+         elseif(fill)then
+            do i = -radius, radius, 1
+               do j = -radius, radius, 1
+                  if(i*i + j*j <= radius*radius)then
+                     call set_pixel(img, p%x+i, p%y+j, c1)
+                  end if
+               end do
+            end do
+         elseif(blend)then
+            do while(x >= y)
+
+               call get_pixelRGBA(img, p%x+x, p%y+y, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x + x, p%y + y , c1)
+
+               call get_pixelRGBA(img, p%x+y, p%y+x, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x + y, p%y + x , c1)
+
+               call get_pixelRGBA(img, p%x-y, p%y+x, c2)
+               c1 = alpha_comp(colour,c2)
+               call set_pixel(img, p%x - y, p%y + x , c1)
+
+               call get_pixelRGBA(img, p%x-x, p%y+y, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x - x, p%y + y , c1)
+
+               call get_pixelRGBA(img, p%x-x, p%y-y, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x - x, p%y - y , c1)
+
+               call get_pixelRGBA(img, p%x-y, p%y-x, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x - y, p%y - x , c1)
+
+               call get_pixelRGBA(img, p%x+y, p%y-x, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x + y, p%y - x , c1)
+
+               call get_pixelRGBA(img, p%x+x, p%y-y, c2)
+               c1 = alpha_comp(colour, c2)
+               call set_pixel(img, p%x + x, p%y - y , c1)
+
+               y = y + 1
+               error = error + 1 + 2*y
+               if(2*(error-x) + 1 > 0)then
+                  x = x - 1
+                  error = error + (1 - 2*x)
+               end if
+            end do
          else
-            call flood_fill(img, p%x, p%y,c1, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+            do while(x >= y)
+
+               call set_pixel(img, p%x + x, p%y + y , c1)
+               call set_pixel(img, p%x + y, p%y + x , c1)
+               call set_pixel(img, p%x - y, p%y + x , c1)
+               call set_pixel(img, p%x - x, p%y + y , c1)
+               call set_pixel(img, p%x - x, p%y - y , c1)
+               call set_pixel(img, p%x - y, p%y - x , c1)
+               call set_pixel(img, p%x + y, p%y - x , c1)
+               call set_pixel(img, p%x + x, p%y - y , c1)
+
+               y = y + 1
+               error = error + 1 + 2*y
+               if(2*(error-x) + 1 > 0)then
+                  x = x - 1
+                  error = error + (1 - 2*x)
+               end if
+            end do
          end if
       elseif(present(fill))then
          if(fill)then
-            call flood_fill(img, p%x, p%y,c1, RGBA(img%Red(p%x, p%y), img%Green(p%x, p%y), img%Blue(p%x, p%y), img%alpha(p%x, p%y)))
+            do i = -radius, radius, 1
+               do j = -radius, radius, 1
+                  if(i*i + j*j <= radius*radius)then
+                     call get_pixelRGBA(img, p%x+i, p%y+j, c2)
+                     c1 = alpha_comp(colour, c2)
+                     call set_pixel(img, p%x+i, p%y+j, c1)
+                  end if
+               end do
+            end do
+         else
+            do while( x >= y)
+    
+               call set_pixel(img, p%x + x, p%y + y , colour)
+               call set_pixel(img, p%x + y, p%y + x , colour)
+               call set_pixel(img, p%x - y, p%y + x , colour)
+               call set_pixel(img, p%x - x, p%y + y , colour)
+               call set_pixel(img, p%x - x, p%y - y , colour)
+               call set_pixel(img, p%x - y, p%y - x , colour)
+               call set_pixel(img, p%x + y, p%y - x , colour)
+               call set_pixel(img, p%x + x, p%y - y , colour)
+         
+               y = y + 1
+               error = error + 1 + 2*y
+               if(2*(error-x) + 1 > 0)then
+                  x = x - 1
+                  error = error + (1 - 2*x)
+               end if
+            end do
          end if
+      else
+         do while( x >= y)
+    
+               call set_pixel(img, p%x + x, p%y + y , colour)
+               call set_pixel(img, p%x + y, p%y + x , colour)
+               call set_pixel(img, p%x - y, p%y + x , colour)
+               call set_pixel(img, p%x - x, p%y + y , colour)
+               call set_pixel(img, p%x - x, p%y - y , colour)
+               call set_pixel(img, p%x - y, p%y - x , colour)
+               call set_pixel(img, p%x + y, p%y - x , colour)
+               call set_pixel(img, p%x + x, p%y - y , colour)
+         
+               y = y + 1
+               error = error + 1 + 2*y
+               if(2*(error-x) + 1 > 0)then
+                  x = x - 1
+                  error = error + (1 - 2*x)
+               end if
+         end do   
       end if
 
    end subroutine draw_circleRGBA
@@ -390,23 +555,28 @@ Contains
    
       implicit none
       
-      type(RGBimage),    intent(INOUT) :: img
-      type(RGB),         intent(IN)    :: colour
+      type(RGBaimage),    intent(INOUT) :: img
+      type(RGBa),         intent(IN)    :: colour
       type(point),       intent(INOUT) :: p1, p2, p3
       logical, optional, intent(IN)    :: fill
       integer                          :: x, y
+      type(bucket)                     :: buck(3)
       
       call draw_line(img, p1, p2, colour)
       call draw_line(img, p2, p3, colour)
       call draw_line(img, p3, p1, colour)
    
+      do x = 1 , 3
+         buck(x) = bucket(max(p1%y,p2%y), min(p1%y,p2%y), x, 1, abs(p2%x-p1%x), abs(p2%y-p1%y), 0)
+      end do
+
       if(present(fill))then
          if(fill)then
             x = (p1%x + p2%x + p3%x)/3
             y = (p1%y + p2%y + p3%y)/3
             print*,x,y
 !            call set_pixel(img, x,y,RGB(255,255,255))
-            call flood_fill(img, x, y, colour, RGB(img%Red(x, y), img%Green(x, y), img%Blue(x, y)))
+            call flood_fill(img, x, y, colour, RGBa(img%Red(x, y), img%Green(x, y), img%Blue(x, y),img%alpha(x,y)))
          end if
       end if
    
@@ -425,6 +595,19 @@ Contains
       
    end subroutine swap
    
+
+   ! subroutine fill_poly(img, colour)
+
+   !    implicit none
+
+   !    type(RGBAimage), intent(INOUT) :: img
+   !    type(RGBA),      intent(IN)    :: colour
+
+
+
+   ! end subroutine fill_poly
+
+
    recursive subroutine flood_fillRGB(img, x, y, colour, old)
    
       implicit none
@@ -516,12 +699,13 @@ Contains
       
       type(RGBAimage), intent(INOUT) :: img
       type(RGBA),      intent(IN)    :: colour, old
-      integer,        intent(IN)     :: x, y
+      integer,         intent(IN)    :: x, y
+      type(RGBA)                     :: c
       integer                        :: x1
 
       if(old == colour)return
-      if( (RGBA(img%Red(x, y), img%Green(x, y), img%Blue(x, y), img%alpha(x, y)) /= old))return
-
+      call get_pixelRGBA(img, x, y, c)
+      if(c /= old)return
       x1 = x
       do while(x1 < img%width .and. RGBA(img%Red(x1, y), img%Green(x1, y), & 
                                          img%Blue(x1, y), img%alpha(x1, y)) == old)

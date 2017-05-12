@@ -210,6 +210,11 @@ Contains
       type(RGB),      intent(INOUT) :: colour
       integer,        intent(in)    :: x, y
 
+      if(x > img%width .or. x < 1)then
+         return
+      elseif(y > img%height .or. y < 1)then
+         return
+      end if
       
       colour%Red = img%Red(x, y)
       colour%Green = img%Green(x, y)
@@ -226,6 +231,12 @@ Contains
       type(RGBA),      intent(INOUT) :: colour
       integer,        intent(in)     :: x, y
 
+
+      if(x > img%width .or. x < 1)then
+         return
+      elseif(y > img%height .or. y < 1)then
+         return
+      end if
       
       colour%Red = img%Red(x, y)
       colour%Green = img%Green(x, y)
@@ -635,7 +646,7 @@ Contains
       type(RGBimage), intent(IN) :: img
       character(*),   intent(IN) :: filename, format
       
-      print*,filename//format
+      print*,'Saving: ',filename//format
       ! call exit(0)
       call write_ppm(filename//'.ppm', img, 'P6')
       call system('convert '//filename//'.ppm '//filename//format)
@@ -651,7 +662,7 @@ Contains
       type(RGBAimage), intent(IN) :: img
       character(*),   intent(IN) :: filename, format
       
-      print*,filename//format
+      print*,'Saving: ',filename//format
       ! call exit(0)
       call write_ppm(filename//'.ppm', img, 'P6')
       call system('convert '//filename//'.ppm '//filename//format)

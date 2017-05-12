@@ -4,10 +4,17 @@ program testimage
    use Draw
    
    implicit none
-   
+   !
+   !  todo 
+   !  
+   !    fix circle fill, by drawing lots of lines
+   !    add alpha to lines
+   !
+   !
+   !
    type(RGBAimage) :: img
    type(RGBA)      :: colour
-   type(point)    :: p1, p2!, p3
+   type(point)    :: p1, p2, p3
    ! integer        :: i, j
    
    !read in image
@@ -26,7 +33,14 @@ program testimage
   p2 =point(0,0)
   p1 = point(70,70)
   colour=RGBA(0,0,255,128)
-    call draw_circle(img, point(160, 50), 50, colour, .True., .TRUE.)
+    call draw_circle(img, point(110, 51), 50, colour, .false., .true.)
+      colour=RGBA(255,0,0,255)
+    call draw_circle(img, point(149, 149), 50, colour, .true., .true.)
+      colour=RGBA(0,255,0,128)
+    call draw_circle(img, point(149, 51), 50, colour, .false., .false.)
+      colour=RGBA(0,255,255,128)  
+    call draw_circle(img, point(110, 149), 50, colour, .true., .false.)
+
   call draw_rectangle(img, p1, p2, RGBA(0,255,0,128), .TRUE., .TRUE.)
   call save_image( img, 'test','.png')
 
@@ -42,30 +56,30 @@ program testimage
 !   print*,colour
 !   call write_ppm('pixel.ppm', img, 'P6')
 !   
-  colour = RGBA(0,0,255,150)
-!   !draw filled circle
-  call init_image(img)
-  call alloc_image(img, 200, 200)
-  call fill_img(img, RGBA(255, 255, 255,255))
-  call draw_circle(img, point(100, 100), 50, colour, .True., .TRUE.)
-  call write_ppm('circle.ppm', img, 'P6')
-!   
-!   !draw rectangle
-  call init_image(img)
-  call alloc_image(img, 200, 200)
-  call fill_img(img, RGBA(255, 255, 255, 255))
-  p1 = point(100,100)
-  p2 = point(50, 50)
-  call draw_rectangle(img, p1, p2, RGBA(0,0,0,150), .TRUE., .TRUE.)
-  call write_ppm('rect.ppm', img, 'P6')
+!   colour = RGBA(0,0,255,150)
+! !   !draw filled circle
+!   call init_image(img)
+!   call alloc_image(img, 200, 200)
+!   call fill_img(img, RGBA(255, 255, 255,255))
+!   call draw_circle(img, point(100, 100), 50, colour, .True., .TRUE.)
+!   call write_ppm('circle.ppm', img, 'P6')
+! !   
+! !   !draw rectangle
+!   call init_image(img)
+!   call alloc_image(img, 200, 200)
+!   call fill_img(img, RGBA(255, 255, 255, 255))
+!   p1 = point(100,100)
+!   p2 = point(50, 50)
+!   call draw_rectangle(img, p1, p2, RGBA(0,0,0,150), .TRUE., .TRUE.)
+!   call write_ppm('rect.ppm', img, 'P6')
 !   
 !   !draw line
 !   p2=point(55,80)
-!   call fill_img(img, RGB(0, 0, 0))
-!   p1 = point(50,100)
-!   p2 = point(75, 75)
-!   p3 = point(100, 100)
-!   call draw_polygon(img, colour, p1, p2, p3, .true.)
+  call fill_img(img, RGBA(0, 0, 0, 0))
+  p1 = point(50,80)
+  p2 = point(200, 75)
+  p3 = point(0, 100)
+  call draw_polygon(img, colour, p1, p2, p3, .true.)
 !   call write_ppm('line.ppm', img, 'P6')
-!   call save_image(img, 'testfile', '.svg')
+  call save_image(img, 'testfile', '.png')
 end program
